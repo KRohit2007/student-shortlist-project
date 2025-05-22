@@ -1,0 +1,100 @@
+import sqlite3
+import csv
+
+# Connect to (or create) the database
+conn = sqlite3.connect('students.db')
+cursor = conn.cursor()
+
+# Create table for student data
+cursor.execute('''
+CREATE TABLE IF NOT EXISTS students (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    marks INTEGER NOT NULL
+)
+''')
+
+# Create table for shortlisted students
+cursor.execute('''
+CREATE TABLE IF NOT EXISTS shortlisted_students (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    marks INTEGER NOT NULL
+)
+''')
+conn.commit()
+
+# Function to add a student
+def add_student(name, marks):
+    cursor.execute("INSERT INTO students (name, marks) VALUES (?, ?)", (name, marks))
+    conn.commit()
+    print(f"Student '{name}' added.")
+
+# Function to view all students
+def view_students():
+    cursor.execute("SELECT * FROM students")
+    for row in cursor.fetchall():
+        print(row)
+
+# Function to shortlist students based on minimum marks
+def shortlist_students(min_marks):
+    cursor.execute("SELECT * FROM students WHERE marks >= ?", (min_marks,))
+    shortlisted = cursor.fetchall()
+
+    # Save to shortlisted_students table
+    cursor.execute("DELETE FROM shortlisted_students")  # Clear old data
+    for student in shortlisted:
+        cursor.execute("INSERT INTO shortlisted_students VALUES (?, ?, ?)", student)
+    conn.commit()
+
+    print(f"{len(shortlisted)} students shortlisted with marks >= {min_marks}.")
+
+# Function to save shortlisted students to CSV
+def export_shortlisted_to_csv(filename="shortlisted_students.csv"):
+    cursor.execute("SELECT * FROM shortlisted_students")
+    students = cursor.fetchall()
+
+    with open(filename, mode='w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow(["ID", "Name", "Marks"])
+        writer.writerows(students)
+
+    print(f"Shortlisted students saved to '{filename}'.")
+
+# Command-line interface
+def main():
+    while True:
+        print("\n--- Student Management System ---")
+        print("1. Add Student")
+        print("2. View All Students")
+        print("3. Shortlist Students")
+        print("4. Export Shortlisted to CSV")
+        print("5. Exit")
+
+        choice = input("Enter your choice: ")
+
+        if choice == '1':
+            name = input("Enter student name: ")
+            marks = int(input("Enter student marks: "))
+            add_student(name, marks)
+
+        elif choice == '2':
+            view_students()
+
+        elif choice == '3':
+            min_marks = int(input("Enter minimum marks to shortlist: "))
+            shortlist_students(min_marks)
+
+        elif choice == '4':
+            export_shortlisted_to_csv()
+
+        elif choice == '5':
+            print("Exiting...")
+            break
+
+        else:
+            print("Invalid choice. Try again.")
+
+if __name__ == "__main__":
+    main()
+    conn.close()
